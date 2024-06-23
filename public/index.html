@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoreo de Corriente</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container" id="content">
+        <h1>Monitoreo de Corriente</h1>
+        <form id="dateRangeForm">
+            <label for="start_date">Fecha de inicio:</label>
+            <input type="date" id="start_date" name="start_date" required>
+            <label for="end_date">Fecha de fin:</label>
+            <input type="date" id="end_date" name="end_date" required>
+            <button type="submit">Filtrar</button>
+        </form>
+        <div class="loader-container" id="loader" style="display: none;">
+            <div class="loader"></div>
+        </div>
+        <canvas id="currentChart"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const form = document.getElementById('dateRangeForm');
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                fetchData(startDate, endDate);
+            });
+
+            // Cargar datos iniciales sin mostrar la pantalla de carga
+            fetchData();
+
+            function fetchData(startDate = '1970-01-01', endDate = new Date().toISOString().split('T')[0]) {
+                const loader = document.getElementById('loader');
+                loader.style.display = 'block';
+
+                fetch(`get_data.php?start_date=${startDate}&end_date=${endDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const timestamps = data.map(item => item.timestamp);
+                        const currents = data.map(item => item.current);
+
+                        const ctx = document.getElementById('currentChart').getContext('2d');
+                        if (window.currentChart) {
+                            window.currentChart.destroy();
+                        }
+                        window.currentChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: timestamps,
+                                datasets: [{
+                                    label: 'Corriente (A)',
+                                    data: currents,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'minute'
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Timestamp'
+                                        }
+                                    },
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Corriente (A)'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        loader.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener los datos:', error);
+                        loader.style.display = 'none';
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
